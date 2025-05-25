@@ -1,0 +1,80 @@
+import numpy as np
+import time
+from scipy.linalg import blas as scipy_blas
+
+def generate_matrices(n):
+    """Генерация случайных матриц"""
+    np.random.seed(42)
+    A = np.random.rand(n, n).astype(np.float64)
+    B = np.random.rand(n, n).astype(np.float64)
+    return A, B
+
+def naive_matrix_mult(A, B):
+    """Наивное умножение матриц по определению"""
+    n = A.shape[0]
+    C = np.zeros((n, n), dtype=np.float64)
+    for i in range(n):
+        for j in range(n):
+            for k in range(n):
+                C[i,j] += A[i,k] * B[k,j]
+    return C
+
+def optimized_matrix_mult(A, B, block_size=64):
+    """Оптимизированное блочное умножение матриц"""
+    n = A.shape[0]
+    C = np.zeros((n, n), dtype=np.float64)
+    
+    for i_block in range(0, n, block_size):
+        for j_block in range(0, n, block_size):
+            for k_block in range(0, n, block_size):
+                # Определяем границы блоков
+                i_end = min(i_block + block_size, n)
+                j_end = min(j_block + block_size, n)
+                k_end = min(k_block + block_size, n)
+                
+                # Умножаем блоки
+                for i in range(i_block, i_end):
+                    for j in range(j_block, j_end):
+                        for k in range(k_block, k_end):
+                            C[i,j] += A[i,k] * B[k,j]
+    return C
+
+def benchmark(matrix_mult_func, A, B, n):
+    """Замер времени выполнения и расчет производительности"""
+    start_time = time.time()
+    C = matrix_mult_func(A, B)
+    end_time = time.time()
+    
+    elapsed_time = end_time - start_time
+    flops = 2 * n**3
+    mflops = flops / elapsed_time / 1e6
+    
+    return elapsed_time, mflops
+
+def main():
+    n = 4096
+    A, B = generate_matrices(n)
+    
+   
+    print("Запуск наивного алгоритма...")
+    naive_time, naive_mflops = benchmark(naive_matrix_mult, A, B, n)
+    print(f"Наивный алгоритм: {naive_time:.2f} сек, {naive_mflops:.2f} MFlops")
+    
+    
+    print("Запуск BLAS (dgemm)...")
+    blas_time, blas_mflops = benchmark(lambda a,b: scipy_blas.dgemm(1.0, a, b), A, B, n)
+    print(f"BLAS (dgemm): {blas_time:.2f} сек, {blas_mflops:.2f} MFlops")
+    
+    
+    print("Запуск оптимизированного алгоритма...")
+    opt_time, opt_mflops = benchmark(lambda a,b: optimized_matrix_mult(a, b), A, B, n)
+    print(f"Оптимизированный: {opt_time:.2f} сек, {opt_mflops:.2f} MFlops")
+    
+    
+    print("\nСравнение производительности:")
+    print(f"BLAS быстрее наивного в {naive_time/blas_time:.1f} раз")
+    print(f"Оптимизированный алгоритм достигает {opt_mflops/blas_mflops*100:.1f}% от производительности BLAS")
+
+if __name__ == "__main__":
+    main()
+print("\nТутов Владимир Александрович 090301-ПОВа-о24")
